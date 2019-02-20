@@ -14,10 +14,17 @@ export default class App extends React.Component {
     super(props);
     this.state = {
       token: null,
+      clave:null,
       notification: null,
       title: 'Hello World',
       body: 'Say something!',
     };
+  }
+
+  componentDidMount() {
+    // AppState.addEventListener('change', this._handleAppStateChange);
+    this.subscription = Notifications.addListener(this.handleNotification);
+    // guardo la respuesta en local
   }
 
   // registro para notificaciones
@@ -44,14 +51,15 @@ export default class App extends React.Component {
     });
 
     ///registro en mi base de datos por api
-    data = JSON.stringify({
-      user_id: 1, token: this.state.token
+      data = JSON.stringify({
+        token: this.state.token,clave:this.state.clave
     })
-    
+    console.log(data);
+    // prepraro el envio
     const myRequest = new Request('http://192.168.43.137/facena/api/registerapp',
          {method: 'POST', body: data  });
 
-
+    // ejectuo el envio
        fetch(myRequest)
          .then(response => {
            if (response.status === 200) {
@@ -85,6 +93,9 @@ export default class App extends React.Component {
 
   // RECIBO NOTIFICACION y guardo el objeto
   handleNotification = notification => {
+    console.log("Handle Notificatio!!!!n")
+    console.log(notification)
+
     this.setState({
       notification,
     });
@@ -92,30 +103,31 @@ export default class App extends React.Component {
 
   render() {
     return (
+
       <KeyboardAvoidingView style={styles.container} behavior="position">
-        <Text style={styles.title}>Expo Sample Notifications App</Text>
-        <Text style={styles.text}>Title</Text>
+        <Text style={styles.title}>Alerta Expedientes</Text>
+        <Text style={styles.text}>Clave de Vinculación</Text>
         <TextInput
           style={styles.input}
-          onChangeText={title => this.setState({ title })}
+          onChangeText={clave => this.setState({ clave })}
           maxLength={100}
-          value={this.state.title}
+          value={this.state.clave}
         />
-        <Text style={styles.text}>Message</Text>
+        {/* <Text style={styles.text}>Message</Text>
         <TextInput
           style={styles.input}
           onChangeText={body => this.setState({ body })}
           maxLength={100}
           value={this.state.body}
-        />
+        /> */}
         <TouchableOpacity
           onPress={() => this.registerForPushNotifications()}
           style={styles.touchable}>
-          <Text>Register me for notifications!</Text>
+          <Text>Registrar Aplicación</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => this.sendPushNotification()} style={styles.touchable}>
+        {/* <TouchableOpacity onPress={() => this.sendPushNotification()} style={styles.touchable}>
           <Text>Send me a notification!</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         {this.state.token ? (
           <View>
             <Text style={styles.text}>Token</Text>
