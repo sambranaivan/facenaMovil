@@ -70,7 +70,7 @@ export default class App extends React.Component {
     console.log(data);
     // prepraro el envio
     // const myRequest = new Request('http://192.168.43.137/facena/api/registerapp',
-    const myRequest = new Request('http://192.168.0.16/facena/api/registerapp',
+    const myRequest = new Request('http://posgrado.unne.edu.ar/api/registerapp',
          {method: 'POST', body: data  });
 
     // ejectuo el envio
@@ -163,13 +163,13 @@ export default class App extends React.Component {
     return (
 
       <View style={styles.container}>
-      {/* <Text>updated 19</Text> */}
-        {/* <TouchableOpacity
+      {/* <Text>updated 20 pos</Text>
+        <TouchableOpacity
           onPress={() => this._borrar()}
           style={styles.touchable}>
           <Text>Borrar</Text>
         </TouchableOpacity> */}
-      <Text style={styles.title}>Alerta FACENA</Text>
+      <Text style={styles.title}>Expedientes FACENA</Text>
       {this.state.bind?
         (
               this.state.notification ? (

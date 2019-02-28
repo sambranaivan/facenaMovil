@@ -14,7 +14,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a3e8a"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -26,7 +26,8 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.sambrana.facena"
+      "package": "com.sambrana.facena",
+      "versionCode": 2
     }
   }
 }
