@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.sambrana.facena",
-      "versionCode": 2
+      "versionCode": 3
     }
   }
 }
