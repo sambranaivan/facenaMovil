@@ -8,7 +8,10 @@ import {
   View,
   AsyncStorage,
 } from 'react-native';
-import { Permissions, Notifications } from 'expo';
+import { Permissions, Notifications, Constants } from 'expo';
+
+
+var listado = [];
 
 export default class App extends React.Component {
   constructor(props) {
@@ -19,6 +22,7 @@ export default class App extends React.Component {
       notification: null,
       getStatus:false,
       data:null,
+      listado:[]
     };
   }
 
@@ -27,6 +31,8 @@ export default class App extends React.Component {
     this.subscription = Notifications.addListener(this.handleNotification);
     // guardo la respuesta en local
     this.getStatus();
+    this.updateNotifications();
+
   }
 
   // registro para notificaciones
@@ -130,10 +136,13 @@ export default class App extends React.Component {
         data.push(notificacion);
         data = JSON.stringify(data);
         AsyncStorage.setItem('notificaciones', data);
+       
         console.log("array de notificaciones")
         console.log(data);
       }
       console.log("Notificacion Almacenada")
+      this.updateNotifications();
+      
     } catch (error) {
       console.log(error)
     }
@@ -183,12 +192,29 @@ export default class App extends React.Component {
 
 // render
 
+  updateNotifications =  async() => {
+      let notificaciones = await AsyncStorage.getItem('notificaciones');
+      notificaciones = JSON.parse(notificaciones);
+      this.setState({notificaciones:notificaciones})
+      console.log('this.updateNofications');
+      console.log(this.state.notificaciones.length);
+      listado =[];
+     for (let index = 0; index < notificaciones.length; index++) {
+       listado.push(<View key={'notificacion_'+index} ><Text>{notificaciones[index].data.message}</Text></View>)
+     }
+     this.setState({listado:listado})
+  }
+
+
+  
+
+  
 
   render() {
+  
     return (
-
-      <View style={styles.container}>
-     
+      
+      <View style={styles.padre}>
       <Text style={styles.header}>Expedientes FACENA</Text>
       {this.state.bind?
         (
@@ -209,7 +235,7 @@ export default class App extends React.Component {
               ) : null
         ):
         (
-        <View>
+        <View style={styles.vinculacion}>
               <Text style={styles.text}>Clave de Vinculación</Text>
               <TextInput
                 style={styles.input}
@@ -225,7 +251,7 @@ export default class App extends React.Component {
         </View>
       
         )}
-        
+        {this.state.listado}
       </View>
     );
   }
@@ -243,7 +269,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingTop: 40,
+    // paddingTop: 40,
     backgroundColor:"white"
   },
   touchable: {
@@ -263,8 +289,18 @@ const styles = StyleSheet.create({
   header:{
     width:'100%',
     fontSize:24,
-    textAlign: 'center', // <-- the magic
-    backgroundColor: '#1a3e8a',
+    height:40,
+    // textAlign: 'center', // <-- the magic
+    backgroundColor: '#1e88e5',
     color:'white',
-  }
+  },
+  vinculacion:{
+    flex:1,
+  },  
+  padre: {
+    flex: 1,
+    paddingTop: Constants.statusBarHeight,
+    // backgroundColor: '#8fbd4d'
+
+  },
 });
