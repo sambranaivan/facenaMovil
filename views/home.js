@@ -5,18 +5,24 @@ import {
   TouchableOpacity,
   Text,
   KeyboardAvoidingView,
-  View,
+  View, ScrollView,
+  FlatList,
+  Alert,
   AsyncStorage,
 } from 'react-native';
 import { Permissions, Notifications, Constants } from 'expo';
-
+import { List, ListItem, Divider  } from "react-native-elements";
+// import { ScrollView } from 'react-native-gesture-handler';
+// import { ListItem, Left, Body, Right, Title } from "native-base";
 
 var listado = [];
+
 
 export default class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      enlazado:false,
       token: null,
       clave:null,
       notification: null,
@@ -41,14 +47,14 @@ export default class App extends React.Component {
     // PRIMERO PIDO PERMISO
     
     // Crear Canal
-    // if (Platform.OS === 'android') {
-    //   Expo.Notifications.createChannelAndroidAsync('notif', {
-    //     name: 'notif',
-    //     sound: true,
-    //     vibrate: [0, 250, 250, 250],
-    //     priority: 'max',
-    //   });
-    // }
+    if (Platform.OS === 'android') {
+      Expo.Notifications.createChannelAndroidAsync('notif', {
+        name: 'notif',
+        sound: true,
+        vibrate: [0, 250, 250, 250],
+        priority: 'max',
+      });
+    }
 
     const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
 
@@ -85,6 +91,14 @@ export default class App extends React.Component {
          .then(response => {
            if (response.status === 200) {
              console.log('todo ok');
+             Alert.alert(
+               'Expedientes FACENA',
+               'Aplicación vinculada con Éxito',
+               [
+                 { text: 'OK', onPress: () => console.log('OK Pressed') },
+               ],
+               { cancelable: false }
+             )
            }
            else{
             console.log(data)
@@ -160,6 +174,7 @@ export default class App extends React.Component {
        
         // AsyncStorage.setItem('data', data);
         if(data == 'true')
+
         {
           this.setState({'bind':true});
         }
@@ -194,14 +209,41 @@ export default class App extends React.Component {
 
   updateNotifications =  async() => {
       let notificaciones = await AsyncStorage.getItem('notificaciones');
-      notificaciones = JSON.parse(notificaciones);
+      if(notificaciones !== null)
+      {
+        notificaciones = JSON.parse(notificaciones);
+      }
+      else
+      {
+        notificaciones = [];
+      }
+      // notificaciones.reverse();
       this.setState({notificaciones:notificaciones})
       console.log('this.updateNofications');
-      console.log(this.state.notificaciones.length);
+      console.log(this.state.notificaciones);
       listado =[];
-     for (let index = 0; index < notificaciones.length; index++) {
-       listado.push(<View key={'notificacion_'+index} ><Text>{notificaciones[index].data.message}</Text></View>)
-     }
+       for (let index = 0; index < notificaciones.length; index++) {
+        
+        if(notificaciones[index].data.type == 'exp')
+        {
+          listado.push(<ListItem key={'notificacion_' + index}
+            title={"Expediente: "+notificaciones[index].data.expediente.numero}
+            subtitle={<View>
+              <Text style={styles.text}>Detalle: {notificaciones[index].data.expediente.detalle_asunto}</Text>
+              <Text style={styles.text}>Asunto: {notificaciones[index].data.asunto}</Text>
+              <Text style={styles.text}>Fecha: {notificaciones[index].data.expediente.fecha}</Text>
+              {/* <Text style={styles.text}>Expediente: {notificaciones[index].data.expediente.numero}</Text> */}
+            </View>}
+          />)
+
+          listado.push(<Divider key={'divider_' + index} style={{ backgroundColor: 'blue' }} />)
+        }
+         
+          
+       }
+      //  return listado;
+  
+     listado.reverse();
      this.setState({listado:listado})
   }
 
@@ -210,29 +252,16 @@ export default class App extends React.Component {
 
   
 
+
   render() {
   
     return (
       
       <View style={styles.padre}>
       <Text style={styles.header}>Expedientes FACENA</Text>
+   
       {this.state.bind?
-        (
-              this.state.notification ? (
-                // si llega una notificacion
-
-              this.state.notification.data.type == 'test' ?(
-                <View>
-                  <Text style={styles.text}>Fecha: {this.state.notification.data.type}</Text>
-                </View>
-                ):(
-                <View>
-                <Text style={styles.text}>Expediente: {this.state.notification.data.expediente.numero}</Text>
-                <Text style={styles.text}>Asunto: {this.state.notification.data.asunto}</Text>
-                <Text style={styles.text}>Detalle: {this.state.notification.data.expediente.detalle_asunto}</Text>
-                <Text style={styles.text}>Fecha: {this.state.notification.data.expediente.fecha}</Text>
-                </View>)
-              ) : null
+        ( null
         ):
         (
         <View style={styles.vinculacion}>
@@ -251,8 +280,13 @@ export default class App extends React.Component {
         </View>
       
         )}
-        {this.state.listado}
+        <ScrollView>
+          {this.state.listado}
+        </ScrollView>
+        
+        
       </View>
+      
     );
   }
 }
