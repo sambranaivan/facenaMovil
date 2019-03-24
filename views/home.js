@@ -19,22 +19,35 @@ var listado = [];
 
 
 export default class App extends React.Component {
+
+  static navigationOptions = {
+    title: "Inicio"
+  }
+
   constructor(props) {
     super(props);
     this.state = {
+      bind:false,
       enlazado:false,
       token: null,
       clave:null,
       notification: null,
       getStatus:false,
       data:null,
-      listado:[]
+      last_notification_id:0,
+      listado:[],
+       // const myRequest = new Request('http://192.168.43.137/facena/api/registerapp',
+    // const myRequest = new Request('http://192.168.1.15/facena/api/registerapp',
+      // server: 'http://intranet.exa.unne.edu.ar/alertafacena/public',
+      // server: 'http://192.168.1.15/facena',
+      server: 'http://192.168.0.16/facena',
+      // server: 'http://192.168.43.137/facena'
     };
   }
 
   componentDidMount() {
     // AppState.addEventListener('change', this._handleAppStateChange);
-    this.subscription = Notifications.addListener(this.handleNotification);
+    // this.subscription = Notifications.addListener(this.handleNotification);
     // guardo la respuesta en local
     this.getStatus();
     this.updateNotifications();
@@ -47,14 +60,14 @@ export default class App extends React.Component {
     // PRIMERO PIDO PERMISO
     
     // Crear Canal
-    if (Platform.OS === 'android') {
-      Expo.Notifications.createChannelAndroidAsync('notif', {
-        name: 'notif',
-        sound: true,
-        vibrate: [0, 250, 250, 250],
-        priority: 'max',
-      });
-    }
+    // if (Platform.OS === 'android') {
+    //   Expo.Notifications.createChannelAndroidAsync('notif', {
+    //     name: 'notif',
+    //     sound: true,
+    //     vibrate: [0, 250, 250, 250],
+    //     priority: 'max',
+    //   });
+    // }
 
     const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
 
@@ -81,16 +94,15 @@ export default class App extends React.Component {
     })
     console.log(data);
     // prepraro el envio
-    // const myRequest = new Request('http://192.168.43.137/facena/api/registerapp',
-    // const myRequest = new Request('http://intranet.exa.unne.edu.ar/alertafacena/public/api/registerapp',
-    const myRequest = new Request('http://192.168.1.15/facena/api/registerapp',
-         {method: 'POST', body: data  });
+    const myRequest = new Request(this.state.server+'/api/registerapp',
+   {method: 'POST', body: data  });
 
-    // ejectuo el envio
+
        fetch(myRequest)
+        
          .then(response => {
            if (response.status === 200) {
-             console.log('todo ok');
+             console.log('Response: ');
              Alert.alert(
                'Expedientes FACENA',
                'Aplicación vinculada con Éxito',
@@ -99,13 +111,25 @@ export default class App extends React.Component {
                ],
                { cancelable: false }
              )
+
+             AsyncStorage.setItem('status', "true");
+             this.setState({ 'bind': true });
            }
            else{
-            console.log(data)
+             
+             Alert.alert(
+               'Expedientes FACENA',
+               'Clave Inconrrecta, Intente de nuevo',
+               [
+                 { text: 'OK', onPress: () => console.log('OK Pressed') },
+               ],
+               { cancelable: false }
+             )
+            // console.log(data)
            }
           })
     
-    AsyncStorage.setItem('status', "true");
+   
     this.getStatus();
 
     }
@@ -120,47 +144,11 @@ export default class App extends React.Component {
       notification,
     });
 
-    this.almacenar();
+    //this.almacenar();
   };
 
 
-  // Almacenar Notificacion
-
-  almacenar = async () => {
-    try {
-      notificacion = this.state.notification;
-      // get current data
-      let data = await AsyncStorage.getItem('notificaciones');
-      if (data !== null)//ya hay algo cargado?
-      {
-        //convierto string a objeto !
-        var data = JSON.parse(data);
-        //inserto nuevo objeto
-        data.push(notificacion);
-        //convierto de nuevo a string!
-        data = JSON.stringify(data);
-        //guardo en el coso locol
-        AsyncStorage.setItem('notificaciones', data);
-        //muestro en consola por la dua
-        console.log("notificaciones")
-        console.log(data);
-      }
-      else {//es el primero asi que se inicializa
-        data = [];
-        data.push(notificacion);
-        data = JSON.stringify(data);
-        AsyncStorage.setItem('notificaciones', data);
-       
-        console.log("array de notificaciones")
-        console.log(data);
-      }
-      console.log("Notificacion Almacenada")
-      this.updateNotifications();
-      
-    } catch (error) {
-      console.log(error)
-    }
-  }
+  
 
   getStatus = async () => {
     try {
@@ -196,18 +184,12 @@ export default class App extends React.Component {
 
   }
 
-  _borrar = async () => {
-    try {
-      AsyncStorage.removeItem('status');
-      this.setState({bind:false})
-    } catch (error) {
-      console.log(error)
-    }
-  }
+ 
 
 // render
 
   updateNotifications =  async() => {
+    ///TODO consulta a API
       let notificaciones = await AsyncStorage.getItem('notificaciones');
       if(notificaciones !== null)
       {
@@ -219,7 +201,7 @@ export default class App extends React.Component {
       }
       // notificaciones.reverse();
       this.setState({notificaciones:notificaciones})
-      console.log('this.updateNofications');
+      // console.log('this.updateNofications');
       console.log(this.state.notificaciones);
       listado =[];
        for (let index = 0; index < notificaciones.length; index++) {
@@ -228,6 +210,8 @@ export default class App extends React.Component {
         {
           listado.push(<ListItem key={'notificacion_' + index}
             title={"Expediente: "+notificaciones[index].data.expediente.numero}
+            // rightIcon={}
+
             subtitle={<View>
               <Text style={styles.text}>Detalle: {notificaciones[index].data.expediente.detalle_asunto}</Text>
               <Text style={styles.text}>Asunto: {notificaciones[index].data.asunto}</Text>
@@ -248,7 +232,15 @@ export default class App extends React.Component {
   }
 
 
-  
+  _borrar = async () => {
+    try {
+      AsyncStorage.removeItem('status');
+      this.setState({ bind: false })
+      console.log('Borrado')
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
   
 
@@ -258,10 +250,18 @@ export default class App extends React.Component {
     return (
       
       <View style={styles.padre}>
+        <TouchableOpacity
+          style={styles.touchable}
+          onPress={() => this._borrar()}>
+          <Text>Borrar</Text>
+        </TouchableOpacity>
       <Text style={styles.header}>Expedientes FACENA</Text>
    
       {this.state.bind?
-        ( null
+        ( 
+            <ScrollView>
+              {this.state.listado}
+            </ScrollView>
         ):
         (
         <View style={styles.vinculacion}>
@@ -280,9 +280,7 @@ export default class App extends React.Component {
         </View>
       
         )}
-        <ScrollView>
-          {this.state.listado}
-        </ScrollView>
+      
         
         
       </View>
@@ -334,7 +332,7 @@ const styles = StyleSheet.create({
   padre: {
     flex: 1,
     paddingTop: Constants.statusBarHeight,
-    // backgroundColor: '#8fbd4d'
+    backgroundColor: '#ffffff'
 
   },
 });
