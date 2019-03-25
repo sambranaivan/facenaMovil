@@ -7,11 +7,13 @@ import {
   KeyboardAvoidingView,
   View, ScrollView,
   FlatList,
+  Image,
   Alert,
   AsyncStorage,
 } from 'react-native';
 import { Permissions, Notifications, Constants } from 'expo';
 import { List, ListItem, Divider  } from "react-native-elements";
+import { ACTION_APP_NOTIFICATION_SETTINGS } from 'expo/build/IntentLauncherAndroid/IntentLauncherAndroid';
 // import { ScrollView } from 'react-native-gesture-handler';
 // import { ListItem, Left, Body, Right, Title } from "native-base";
 
@@ -28,16 +30,15 @@ export default class App extends React.Component {
     super(props);
     this.state = {
       bind:false,
-      enlazado:false,
+      // enlazado:false,
       token: null,
       clave:null,
-      notification: null,
+      // notification: null,
       getStatus:false,
       data:null,
       last_notification_id:0,
       listado:[],
-       // const myRequest = new Request('http://192.168.43.137/facena/api/registerapp',
-    // const myRequest = new Request('http://192.168.1.15/facena/api/registerapp',
+  
       // server: 'http://intranet.exa.unne.edu.ar/alertafacena/public',
       // server: 'http://192.168.1.15/facena',
       server: 'http://192.168.0.16/facena',
@@ -46,11 +47,10 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
-    // AppState.addEventListener('change', this._handleAppStateChange);
-    // this.subscription = Notifications.addListener(this.handleNotification);
-    // guardo la respuesta en local
-    this.getStatus();
-    this.updateNotifications();
+  
+    this.init();//aca vamos a setear todas los states que necesitemos
+    
+    // this.renderNotifications();///render
 
   }
 
@@ -103,6 +103,12 @@ export default class App extends React.Component {
          .then(response => {
            if (response.status === 200) {
              console.log('Response: ');
+             _user = JSON.parse(response._bodyText);
+           
+             console.log(JSON.parse(response._bodyText));
+             this.setState({'user':_user});
+             AsyncStorage.setItem('user_id',_user.id.toString());
+            //  TODO guarda user en storage
              Alert.alert(
                'Expedientes FACENA',
                'Aplicación vinculada con Éxito',
@@ -114,6 +120,7 @@ export default class App extends React.Component {
 
              AsyncStorage.setItem('status', "true");
              this.setState({ 'bind': true });
+             this.init();
            }
            else{
              
@@ -130,39 +137,29 @@ export default class App extends React.Component {
           })
     
    
-    this.getStatus();
+  
 
     }
 
 
-  // RECIBO NOTIFICACION y guardo el objeto
+  // RECIBO NOTIFICACION
   handleNotification = notification => {
-    console.log("Handle Notificatio!!!!n")
+    // console.log("Handle Notificatio!!!!n")
     console.log(notification)
-
-    this.setState({
-      notification,
-    });
-
+    this.renderNotifications();
     //this.almacenar();
   };
 
 
   
 
-  getStatus = async () => {
+  init = async () => {
     try {
-
       ///get current data
       let data = await AsyncStorage.getItem('status');
-      console.log("GetSTATUS()")
-      console.log(data)
       if (data !== null)//ya hay algo cargado?
       {
-       
-        // AsyncStorage.setItem('data', data);
         if(data == 'true')
-
         {
           this.setState({'bind':true});
         }
@@ -170,27 +167,175 @@ export default class App extends React.Component {
         {
           this.setState({'bind':false});
         }
-
       }
       else 
       {//es el primero asi que se inicializa  
         AsyncStorage.setItem('status', "false");
       }
+    } catch (error) {
+      console.log("error init() bind status")
+    }
+
+    //user_id
+
+  try{
+    let data = await AsyncStorage.getItem('user_id');
+    this.setState({ 'user_id': parseInt(data,10)});
+    console.log('User_id:'+this.state.user_id);
+  }
+  catch{
+    console.log("error init() get user_id")
+  }
+
+  try {
+    let data = await AsyncStorage.getItem('last_notification_id');
+    if(data !== null)
+    {
+      this.setState({ 'last_notification_id': parseInt(data,10)})
+    }
+    else{
+      this.setState({ 'last_notification_id': 0 })
+    }
+  } catch (error) {
+    console.log(error)
+    console.log("error init() last_notification_id")
+  }
+
+
+  console.log(this.state);
+  this.getNotifications();
+
+
+  }
+
+  async borrarNotificacion(notif_id)
+  {
+    console.log("Borrar"+notif_id)
+    try {
+      let data = await AsyncStorage.getItem('notificaciones');
+
+      if(data !== null)
+      {
+        data = JSON.parse(data);
+        del = null;
+        for (var i = 0; i < data.length; i++) {
+          if (data[i].id == notif_id) 
+          {
+            console.log("BORRAR "+notif_id)
+            data.splice(i, 1);
+          }
+        }
+        
+      }
+
+      console.log(data);
+
+      AsyncStorage.setItem('notificaciones',JSON.stringify(data));
+      this.renderNotifications();
+      
 
 
     } catch (error) {
       console.log(error)
+      console.log("Borrar notif error")
     }
-
   }
 
  
 
 // render
 
-  updateNotifications =  async() => {
-    ///TODO consulta a API
+  getNotifications = async() =>
+  {
+    
+    params = JSON.stringify({ user_id: this.state.user_id, from: this.state.last_notification_id });
+    console.log(params);
+    const requestNotifications = new Request(this.state.server + '/api/getNotifications',
+      { method: 'POST', body: params});
+
+
+    fetch(requestNotifications)
+      .then(response => {
+        if (response.status === 200) {
+       
+          respuesta = JSON.parse(response._bodyText);
+
+          console.log('notificaciones');
+          // console.log(notificaciones);
+          new_notifications = []
+          respuesta.forEach(notif => 
+          {
+            ///actualizar last_id
+            AsyncStorage.setItem('last_notification_id', notif.id.toString(10));
+            ///guardar notificaciones nuevas
+            console.log("add->"+notif.id);
+            new_notifications.push({ id: notif.id, data: JSON.parse(notif.mensaje)})
+          });
+
+
+
+          // console.log(new_notifications);
+          this.setState({new:new_notifications});
+
+          this.saveNotifications();        
+         
+        }
+        else {          
+         console.log("ERROR EN NOTIFICACIONES")
+        }
+      })}
+      
+      ///END FETCH
+    saveNotifications = async() =>{
+      ///aca guardo en el storage
+      try {
+        //
+
+        let from_storage = await AsyncStorage.getItem('notificaciones');
+
+
+        if (from_storage !== null) {
+          from_storage = JSON.parse(from_storage);
+        }
+        else {
+          from_storage = [];
+        }
+
+        if (this.state.new) {
+          let nuevas = this.state.new;
+          nuevas.forEach(element => {
+            from_storage.push(element)
+          });
+        }
+
+        AsyncStorage.setItem('notificaciones', JSON.stringify(from_storage))
+        
+
+        ///paso a texto de nuevo para guardar
+        
+        console.log(from_storage);
+        console.log('Nuevas Notificaciones Guardades en el Storage')
+        //
+      } catch (error) {
+        console.log("Error al guardar Notificaciones ne el storage");
+        console.log(error);
+      }
+
+      this.renderNotifications();
+    }
+
+  
+
+
+
+  renderNotifications =  async() => {
+  
+
+      console.log('Render Notifications')
       let notificaciones = await AsyncStorage.getItem('notificaciones');
+   
+      console.log("!!!!!")      
+      console.log(notificaciones)
       if(notificaciones !== null)
       {
         notificaciones = JSON.parse(notificaciones);
@@ -199,29 +344,48 @@ export default class App extends React.Component {
       {
         notificaciones = [];
       }
-      // notificaciones.reverse();
-      this.setState({notificaciones:notificaciones})
-      // console.log('this.updateNofications');
-      console.log(this.state.notificaciones);
+
+      
+
       listado =[];
        for (let index = 0; index < notificaciones.length; index++) {
         
-        if(notificaciones[index].data.type == 'exp')
-        {
+    
           listado.push(<ListItem key={'notificacion_' + index}
             title={"Expediente: "+notificaciones[index].data.expediente.numero}
             // rightIcon={}
 
-            subtitle={<View>
-              <Text style={styles.text}>Detalle: {notificaciones[index].data.expediente.detalle_asunto}</Text>
-              <Text style={styles.text}>Asunto: {notificaciones[index].data.asunto}</Text>
-              <Text style={styles.text}>Fecha: {notificaciones[index].data.expediente.fecha}</Text>
+            subtitle={<View style={{ flexDirection: 'row' }}>
+              <View style={{ flex: 90 }}>
+
+              <Text style={{ paddingBottom: 2, padding: 8}}>
+                  Detalle: {notificaciones[index].data.expediente.detalle_asunto}
+                </Text>
+      
+              
+              <Text style={{paddingBottom: 2,padding: 8}}>
+                  Asunto: {notificaciones[index].data.asunto}
+              </Text>
+
+
+              <Text style={{ paddingBottom: 2, padding: 8}}>
+                  Fecha: {notificaciones[index].data.expediente.fecha}
+              </Text>
+              </View>
+              <View style={{ flex: 10 }}>
+                <TouchableOpacity style={{ textAlign: "center", height:40 }}
+                  onPress={() => this.borrarNotificacion(notificaciones[index].id)}>
+
+                  <Image source={require('../assets/delete.png')} style={{ height: "80%", width: "80%" }} />
+
+                </TouchableOpacity>
+              </View>
               {/* <Text style={styles.text}>Expediente: {notificaciones[index].data.expediente.numero}</Text> */}
             </View>}
           />)
 
           listado.push(<Divider key={'divider_' + index} style={{ backgroundColor: 'blue' }} />)
-        }
+        
          
           
        }
@@ -232,7 +396,7 @@ export default class App extends React.Component {
   }
 
 
-  _borrar = async () => {
+  _borrarUser = async () => {
     try {
       AsyncStorage.removeItem('status');
       this.setState({ bind: false })
@@ -242,6 +406,18 @@ export default class App extends React.Component {
     }
   }
 
+  _borrar = async () => {
+    try {
+      AsyncStorage.removeItem('status');
+      AsyncStorage.removeItem('notificaciones');
+      AsyncStorage.removeItem('last_notification_id');
+      AsyncStorage.removeItem('user_id');
+      this.setState({ bind: false })
+      console.log('Borrado status')
+    } catch (error) {
+      console.log(error)
+    }
+  }
   
 
 
