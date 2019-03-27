@@ -33,15 +33,15 @@ export default class App extends React.Component {
       // enlazado:false,
       token: null,
       clave:null,
-      // notification: null,
+      notification: null,
       getStatus:false,
       data:null,
       last_notification_id:0,
       listado:[],
   
-      // server: 'http://intranet.exa.unne.edu.ar/alertafacena/public',
+      server: 'http://intranet.exa.unne.edu.ar/alertafacena/public',
       // server: 'http://192.168.1.15/facena',
-      server: 'http://192.168.0.16/facena',
+      // server: 'http://192.168.0.16/facena',
       // server: 'http://192.168.43.137/facena'
     };
   }
@@ -49,8 +49,8 @@ export default class App extends React.Component {
   componentDidMount() {
   
     this.init();//aca vamos a setear todas los states que necesitemos
-    
-    // this.renderNotifications();///render
+    console.log('didmpunt')
+    // this.renderNotifications();///render ya llama desde init
 
   }
 
@@ -60,14 +60,14 @@ export default class App extends React.Component {
     // PRIMERO PIDO PERMISO
     
     // Crear Canal
-    // if (Platform.OS === 'android') {
-    //   Expo.Notifications.createChannelAndroidAsync('notif', {
-    //     name: 'notif',
-    //     sound: true,
-    //     vibrate: [0, 250, 250, 250],
-    //     priority: 'max',
-    //   });
-    // }
+    if (Platform.OS === 'android') {
+      Expo.Notifications.createChannelAndroidAsync('notif', {
+        name: 'notif',
+        sound: true,
+        vibrate: [0, 250, 250, 250],
+        priority: 'max',
+      });
+    }
 
     const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
 
@@ -144,12 +144,44 @@ export default class App extends React.Component {
 
   // RECIBO NOTIFICACION
   handleNotification = notification => {
-    // console.log("Handle Notificatio!!!!n")
-    console.log(notification)
-    this.renderNotifications();
-    //this.almacenar();
+   
+    
+    this.setState({ notification: notification });
+    // this.selectNotification();
+    this.getNotifications();
+    // this.init();
+    
   };
 
+  selectNotification = async()=>{
+    console.log("LastNotification");
+    /**
+     * Almacenar para ir despues a otra vista
+     */
+    try {
+      notificacion = this.state.notification;
+      AsyncStorage.setItem('selected',JSON.parse(notificacion));
+    } catch (error) {
+      console.log("error en seleccionar notificacion")
+    }
+
+    this.showNotification();
+  }
+
+  showNotification= async()=>{
+    try {
+      let selected = await AsyncStorage.getItem('selected');
+      if(selected !== null)
+      {
+        selected = JSON.parse(selected);
+        console.log("SELECTED");
+        console.log(selected);
+
+      }
+    } catch (error) {
+      
+    }
+  }
 
   
 
@@ -212,7 +244,7 @@ export default class App extends React.Component {
   {
     console.log("Borrar"+notif_id)
     try {
-      let data = await AsyncStorage.getItem('notificaciones');
+      let data = await AsyncStorage.getItem('notify');
 
       if(data !== null)
       {
@@ -230,7 +262,7 @@ export default class App extends React.Component {
 
       console.log(data);
 
-      AsyncStorage.setItem('notificaciones',JSON.stringify(data));
+      AsyncStorage.setItem('notify',JSON.stringify(data));
       this.renderNotifications();
       
 
@@ -275,8 +307,10 @@ export default class App extends React.Component {
 
 
           // console.log(new_notifications);
+          //guardo en vista
           this.setState({new:new_notifications});
 
+          ///guardo en global
           this.saveNotifications();        
          
         }
@@ -291,7 +325,7 @@ export default class App extends React.Component {
       try {
         //
 
-        let from_storage = await AsyncStorage.getItem('notificaciones');
+        let from_storage = await AsyncStorage.getItem('notify');
 
 
         if (from_storage !== null) {
@@ -308,7 +342,7 @@ export default class App extends React.Component {
           });
         }
 
-        AsyncStorage.setItem('notificaciones', JSON.stringify(from_storage))
+        AsyncStorage.setItem('notify', JSON.stringify(from_storage))
         
 
         ///paso a texto de nuevo para guardar
@@ -332,7 +366,7 @@ export default class App extends React.Component {
   
 
       console.log('Render Notifications')
-      let notificaciones = await AsyncStorage.getItem('notificaciones');
+      let notificaciones = await AsyncStorage.getItem('notify');
    
       console.log("!!!!!")      
       console.log(notificaciones)
@@ -409,7 +443,7 @@ export default class App extends React.Component {
   _borrar = async () => {
     try {
       AsyncStorage.removeItem('status');
-      AsyncStorage.removeItem('notificaciones');
+      AsyncStorage.removeItem('notify');
       AsyncStorage.removeItem('last_notification_id');
       AsyncStorage.removeItem('user_id');
       this.setState({ bind: false })
@@ -426,12 +460,13 @@ export default class App extends React.Component {
     return (
       
       <View style={styles.padre}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.touchable}
           onPress={() => this._borrar()}>
           <Text>Borrar</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       <Text style={styles.header}>Expedientes FACENA</Text>
+        {/* <Text style={styles.header}>{this.state.server}</Text> */}
    
       {this.state.bind?
         ( 

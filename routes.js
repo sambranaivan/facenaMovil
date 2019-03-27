@@ -8,24 +8,24 @@ import Admin from './views/admin';
 // import Menu from './views/menu';
 // import Sincro from './views/sincro';
 
-// const Stack = createStackNavigator(
+const Stack = createStackNavigator(
+    {
+    Home: { screen: Home },
+    }, 
+    { 
+        initialRouteName: 'Home', 
+        headerMode: 'none' 
+    });
+// const navigator = createDrawerNavigator(
 //     {
-//     Home: { screen: Home },
-//     }, 
-//     { 
-//         initialRouteName: 'Home', 
-//         headerMode: 'none' 
-//     });
-const navigator = createDrawerNavigator(
-    {
-        Home:{screen:Home},
-        Admin: { screen: Admin }
-    }
-    ,
-    {
+//         Home:{screen:Home},
+//         // Admin: { screen: Admin }
+//     }
+//     ,
+//     {
 
-    })
+//     })
 
 
-const App = createAppContainer(navigator);
+const App = createAppContainer(Stack);
 export default App;
