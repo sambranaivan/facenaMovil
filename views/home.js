@@ -132,14 +132,14 @@ export default class App extends React.Component {
     // PRIMERO PIDO PERMISO
     
     // Crear Canal
-    // if (Platform.OS === 'android') {
-    //   Expo.Notifications.createChannelAndroidAsync('notif', {
-    //     name: 'notif',
-    //     sound: true,
-    //     vibrate: [0, 250, 250, 250],
-    //     priority: 'max',
-    //   });
-    // }
+    if (Platform.OS === 'android') {
+      Expo.Notifications.createChannelAndroidAsync('notif', {
+        name: 'notif',
+        sound: true,
+        vibrate: [0, 250, 250, 250],
+        priority: 'max',
+      });
+    }
 
     const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
 
