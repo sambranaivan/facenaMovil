@@ -23,25 +23,21 @@ export default class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      // bind:false,
-      // token: null,
+ 
       clave:null,
       notification: null,
       data:null,
       last_notification_id:null,
       listado:[],
-      new_notifications:[],
+      notificaciones:[],
       server: 'http://intranet.exa.unne.edu.ar/alertafacena/public',
-      // server: 'http://192.168.1.15/facena',
-      // server: 'http://192.168.0.16/facena',
-      // server: 'http://192.168.43.137/facena'
+
     };
   }
 
   componentDidMount() {
     this.registerForPushNotifications();///registramos la app y obtenemos el token
     this.init();//aca vamos a setear todas los states que necesitemos
-    console.log('ComponentDidMount')
     // this.renderNotifications();///render ya llama desde init
 
   }
@@ -77,24 +73,8 @@ export default class App extends React.Component {
       console.log("error init() get user_id")
     }
 
-    try {
-      let data = await AsyncStorage.getItem('last_notification_id');
-      if (data !== null) {
-        this.setState({ 'last_notification_id': parseInt(data, 10) })
-      }
-      else {
-        this.setState({ 'last_notification_id': 0 })
-      }
-    } catch (error) {
-      console.log(error)
-      console.log("error init() last_notification_id")
-    }
 
-    console.log("init()->Estados");
-    console.log(this.state);
     this.getNotifications();
-
-
   }
 
   vincular = async ()=>{
@@ -136,7 +116,7 @@ export default class App extends React.Component {
 
           Alert.alert(
             'Expedientes FACENA',
-            'Clave Inconrrecta, Intente de nuevo',
+            'Clave Incorrecta, Intente de nuevo',
             [
               { text: 'OK', onPress: () => console.log('OK Pressed') },
             ],
@@ -146,20 +126,20 @@ export default class App extends React.Component {
         }
       })
 
-  }
+  }///end vincular()
   
   async registerForPushNotifications() {
     // PRIMERO PIDO PERMISO
     
     // Crear Canal
-    if (Platform.OS === 'android') {
-      Expo.Notifications.createChannelAndroidAsync('notif', {
-        name: 'notif',
-        sound: true,
-        vibrate: [0, 250, 250, 250],
-        priority: 'max',
-      });
-    }
+    // if (Platform.OS === 'android') {
+    //   Expo.Notifications.createChannelAndroidAsync('notif', {
+    //     name: 'notif',
+    //     sound: true,
+    //     vibrate: [0, 250, 250, 250],
+    //     priority: 'max',
+    //   });
+    // }
 
     const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
 
@@ -194,36 +174,26 @@ export default class App extends React.Component {
     
   };
 
-  // selectNotification = async()=>{
-  //   console.log("LastNotification");
-  //   /**
-  //    * Almacenar para ir despues a otra vista
-  //    */
-  //   try {
-  //     notificacion = this.state.notification;
-  //     AsyncStorage.setItem('selected',JSON.parse(notificacion));
-  //   } catch (error) {
-  //     console.log("error en seleccionar notificacion")
-  //   }
+  
+async serverDelete(notif_id)
+{
+  ////borrar del servidor tambien
+  postdata = JSON.stringify({
+    id: notif_id
+  })
+  const myRequest = new Request(this.state.server + '/api/deleteNotication',
+    { method: 'POST', body: postdata });
 
-  //   this.showNotification();
-  // }
-
-  // showNotification= async()=>{
-  //   try {
-  //     let selected = await AsyncStorage.getItem('selected');
-  //     if(selected !== null)
-  //     {
-  //       selected = JSON.parse(selected);
-  //       console.log("SELECTED");
-  //       console.log(selected);
-
-  //     }
-  //   } catch (error) {
-      
-  //   }
-  // }
-
+  fetch(myRequest).then(response => {
+    if (response.status === 200) {
+      console.log("NOTIFICACION BORRAR")
+      console.log(response._bodyText);
+    }
+    else {
+      console.log("No se pudo borrar la notificacion del servidor")
+    }
+  })
+}
   
 
  
@@ -232,27 +202,29 @@ export default class App extends React.Component {
   {
     console.log("Borrar"+notif_id)
     try {
-      let data = await AsyncStorage.getItem('notify');
+      let data = this.state.notificaciones
 
       if(data !== null)
       {
-        data = JSON.parse(data);
-        del = null;
+        // data = JSON.parse(data);
+
         for (var i = 0; i < data.length; i++) {
           if (data[i].id == notif_id) 
           {
             console.log("BORRAR "+notif_id)
             data.splice(i, 1);
+           
           }
         }
         
       }
 
-      console.log(data);
+      this.setState({notificaciones:data});
+    
 
-      AsyncStorage.setItem('notify',JSON.stringify(data));
+      // AsyncStorage.setItem('notify',JSON.stringify(data));
       this.renderNotifications();
-      
+      this.serverDelete(notif_id);
 
 
     } catch (error) {
@@ -265,7 +237,7 @@ export default class App extends React.Component {
   getNotifications = async() =>
   {
     
-    params = JSON.stringify({ user_id: this.state.user_id, from: this.state.last_notification_id });
+    params = JSON.stringify({ user_id: this.state.user_id });
     console.log(params);
     const requestNotifications = new Request(this.state.server + '/api/getNotifications',
       { method: 'POST', body: params});
@@ -279,72 +251,25 @@ export default class App extends React.Component {
 
           console.log('notificaciones');
           // console.log(notificaciones);
-          new_notifications = [];//empty array
+          _notificaciones = [];//empty array
           respuesta.forEach(notif => 
           {
-            ///actualizar last_id
-            AsyncStorage.setItem('last_notification_id', notif.id.toString(10));
-            ///guardar notificaciones nuevas
-            console.log("add->"+notif.id);
-            new_notifications.push({ id: notif.id, data: JSON.parse(notif.mensaje)})
+            _notificaciones.push({ id: notif.id, data: JSON.parse(notif.mensaje)})
           });
 
 
-
-          // console.log(new_notifications);
-          //guardo en vista
-          this.setState({ new_notifications:new_notifications});
-
-          ///guardo en global
-          this.saveNotifications();        
+          // AsyncStorage.setItem('notify', JSON.stringify(_notificaciones));
+          this.setState({notificaciones:_notificaciones});
+          this.renderNotifications();
          
         }
-        else {          
-         console.log("ERROR EN NOTIFICACIONES")
+        else {  
+          console.log("ERROR EN NOTIFICACIONES")
+          console.log(response.status)        ;
+          
         }
-      })}
-      
-      ///END FETCH
-    saveNotifications = async() =>{
-      ///aca guardo en el storage
-      try {
-        //
-
-        let from_storage = await AsyncStorage.getItem('notify');
-
-
-        if (from_storage !== null) {
-          from_storage = JSON.parse(from_storage);
-        }
-        else {
-          from_storage = [];
-        }
-
-        if (this.state.new_notifications) {
-          nuevas = this.state.new_notifications;
-          nuevas.forEach(element => {
-            from_storage.push(element)
-          });
-        }
-        // limpio las new
-        this.setState({new_notifications:[]});
-
-         AsyncStorage.setItem('notify', JSON.stringify(from_storage))
-        
-
-        ///paso a texto de nuevo para guardar
-        
-        console.log(from_storage);
-        console.log('Nuevas Notificaciones Guardades en el Storage')
-        this.renderNotifications();
-        //
-      } catch (error) {
-        console.log("Error al guardar Notificaciones ne el storage");
-        console.log(error);
-      }
-
-      
-    }
+      })}///end getNotification();
+   
 
   
 
@@ -354,13 +279,13 @@ export default class App extends React.Component {
   
 
       console.log('Render Notifications')
-      notificaciones = await AsyncStorage.getItem('notify');
+      // notificaciones = await AsyncStorage.getItem('notify');
+    notificaciones = this.state.notificaciones;
    
-      console.log("!!!!!")      
-      console.log(notificaciones)
+      
       if(notificaciones !== null)
       {
-        notificaciones = JSON.parse(notificaciones);
+        // notificaciones = JSON.parse(notificaciones);
       }
       else
       {
