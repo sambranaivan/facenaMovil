@@ -4,20 +4,14 @@ import {
   TextInput,
   TouchableOpacity,
   Text,
-  KeyboardAvoidingView,
   View, ScrollView,
-  FlatList,
   Image,
   Alert,
   AsyncStorage,
 } from 'react-native';
 import { Permissions, Notifications, Constants } from 'expo';
 import { List, ListItem, Divider  } from "react-native-elements";
-import { ACTION_APP_NOTIFICATION_SETTINGS } from 'expo/build/IntentLauncherAndroid/IntentLauncherAndroid';
-// import { ScrollView } from 'react-native-gesture-handler';
-// import { ListItem, Left, Body, Right, Title } from "native-base";
 
-var listado = [];
 
 
 export default class App extends React.Component {
@@ -29,16 +23,14 @@ export default class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      bind:false,
-      // enlazado:false,
-      token: null,
+      // bind:false,
+      // token: null,
       clave:null,
       notification: null,
-      getStatus:false,
       data:null,
-      last_notification_id:0,
+      last_notification_id:null,
       listado:[],
-  
+      new_notifications:[],
       server: 'http://intranet.exa.unne.edu.ar/alertafacena/public',
       // server: 'http://192.168.1.15/facena',
       // server: 'http://192.168.0.16/facena',
@@ -47,14 +39,114 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
-  
+    this.registerForPushNotifications();///registramos la app y obtenemos el token
     this.init();//aca vamos a setear todas los states que necesitemos
-    console.log('didmpunt')
+    console.log('ComponentDidMount')
     // this.renderNotifications();///render ya llama desde init
 
   }
 
-  // registro para notificaciones
+  init = async () => {
+    try {
+      ///get current data
+      let data = await AsyncStorage.getItem('status');
+      if (data !== null)//ya hay algo cargado?
+      {
+        if (data == 'true') {
+          this.setState({ 'bind': true });
+        }
+        else {
+          this.setState({ 'bind': false });
+        }
+      }
+      else {//es el primero asi que se inicializa  
+        AsyncStorage.setItem('status', "false");
+      }
+    } catch (error) {
+      console.log("error init() bind status")
+    }
+
+    //user_id
+
+    try {
+      let data = await AsyncStorage.getItem('user_id');
+      this.setState({ 'user_id': parseInt(data, 10) });
+      console.log('User_id:' + this.state.user_id);
+    }
+    catch{
+      console.log("error init() get user_id")
+    }
+
+    try {
+      let data = await AsyncStorage.getItem('last_notification_id');
+      if (data !== null) {
+        this.setState({ 'last_notification_id': parseInt(data, 10) })
+      }
+      else {
+        this.setState({ 'last_notification_id': 0 })
+      }
+    } catch (error) {
+      console.log(error)
+      console.log("error init() last_notification_id")
+    }
+
+    console.log("init()->Estados");
+    console.log(this.state);
+    this.getNotifications();
+
+
+  }
+
+  vincular = async ()=>{
+    ///registro en mi base de datos por api
+    data = JSON.stringify({
+      token: this.state.token, clave: this.state.clave
+    })
+    console.log(data);
+    // prepraro el envio
+    const myRequest = new Request(this.state.server + '/api/registerapp',
+      { method: 'POST', body: data });
+
+
+    fetch(myRequest)
+
+      .then(response => {
+        if (response.status === 200) {
+          console.log('Response: ');
+          _user = JSON.parse(response._bodyText);
+
+          console.log(JSON.parse(response._bodyText));
+          this.setState({ 'user': _user });
+          AsyncStorage.setItem('user_id', _user.id.toString());
+          //  TODO guarda user en storage
+          Alert.alert(
+            'Expedientes FACENA',
+            'Aplicación vinculada con Éxito',
+            [
+              { text: 'OK', onPress: () => console.log('OK Pressed') },
+            ],
+            { cancelable: false }
+          )
+
+          AsyncStorage.setItem('status', "true");
+          this.setState({ 'bind': true });
+          this.init();
+        }
+        else {
+
+          Alert.alert(
+            'Expedientes FACENA',
+            'Clave Inconrrecta, Intente de nuevo',
+            [
+              { text: 'OK', onPress: () => console.log('OK Pressed') },
+            ],
+            { cancelable: false }
+          )
+          // console.log(data)
+        }
+      })
+
+  }
   
   async registerForPushNotifications() {
     // PRIMERO PIDO PERMISO
@@ -87,159 +179,55 @@ export default class App extends React.Component {
     this.setState({
       token,
     });
-
-    ///registro en mi base de datos por api
-      data = JSON.stringify({
-        token: this.state.token,clave:this.state.clave
-    })
-    console.log(data);
-    // prepraro el envio
-    const myRequest = new Request(this.state.server+'/api/registerapp',
-   {method: 'POST', body: data  });
-
-
-       fetch(myRequest)
-        
-         .then(response => {
-           if (response.status === 200) {
-             console.log('Response: ');
-             _user = JSON.parse(response._bodyText);
-           
-             console.log(JSON.parse(response._bodyText));
-             this.setState({'user':_user});
-             AsyncStorage.setItem('user_id',_user.id.toString());
-            //  TODO guarda user en storage
-             Alert.alert(
-               'Expedientes FACENA',
-               'Aplicación vinculada con Éxito',
-               [
-                 { text: 'OK', onPress: () => console.log('OK Pressed') },
-               ],
-               { cancelable: false }
-             )
-
-             AsyncStorage.setItem('status', "true");
-             this.setState({ 'bind': true });
-             this.init();
-           }
-           else{
-             
-             Alert.alert(
-               'Expedientes FACENA',
-               'Clave Inconrrecta, Intente de nuevo',
-               [
-                 { text: 'OK', onPress: () => console.log('OK Pressed') },
-               ],
-               { cancelable: false }
-             )
-            // console.log(data)
-           }
-          })
-    
-   
-  
-
+    console.log("Tengo el Token");
+    console.log(this.state.token);
     }
 
 
   // RECIBO NOTIFICACION
   handleNotification = notification => {
    
-    
-    this.setState({ notification: notification });
-    // this.selectNotification();
+    // console.log("Handling");
     this.getNotifications();
-    // this.init();
+    this.setState({ notification: notification });
+
     
   };
 
-  selectNotification = async()=>{
-    console.log("LastNotification");
-    /**
-     * Almacenar para ir despues a otra vista
-     */
-    try {
-      notificacion = this.state.notification;
-      AsyncStorage.setItem('selected',JSON.parse(notificacion));
-    } catch (error) {
-      console.log("error en seleccionar notificacion")
-    }
+  // selectNotification = async()=>{
+  //   console.log("LastNotification");
+  //   /**
+  //    * Almacenar para ir despues a otra vista
+  //    */
+  //   try {
+  //     notificacion = this.state.notification;
+  //     AsyncStorage.setItem('selected',JSON.parse(notificacion));
+  //   } catch (error) {
+  //     console.log("error en seleccionar notificacion")
+  //   }
 
-    this.showNotification();
-  }
+  //   this.showNotification();
+  // }
 
-  showNotification= async()=>{
-    try {
-      let selected = await AsyncStorage.getItem('selected');
-      if(selected !== null)
-      {
-        selected = JSON.parse(selected);
-        console.log("SELECTED");
-        console.log(selected);
+  // showNotification= async()=>{
+  //   try {
+  //     let selected = await AsyncStorage.getItem('selected');
+  //     if(selected !== null)
+  //     {
+  //       selected = JSON.parse(selected);
+  //       console.log("SELECTED");
+  //       console.log(selected);
 
-      }
-    } catch (error) {
+  //     }
+  //   } catch (error) {
       
-    }
-  }
+  //   }
+  // }
 
   
 
-  init = async () => {
-    try {
-      ///get current data
-      let data = await AsyncStorage.getItem('status');
-      if (data !== null)//ya hay algo cargado?
-      {
-        if(data == 'true')
-        {
-          this.setState({'bind':true});
-        }
-        else
-        {
-          this.setState({'bind':false});
-        }
-      }
-      else 
-      {//es el primero asi que se inicializa  
-        AsyncStorage.setItem('status', "false");
-      }
-    } catch (error) {
-      console.log("error init() bind status")
-    }
-
-    //user_id
-
-  try{
-    let data = await AsyncStorage.getItem('user_id');
-    this.setState({ 'user_id': parseInt(data,10)});
-    console.log('User_id:'+this.state.user_id);
-  }
-  catch{
-    console.log("error init() get user_id")
-  }
-
-  try {
-    let data = await AsyncStorage.getItem('last_notification_id');
-    if(data !== null)
-    {
-      this.setState({ 'last_notification_id': parseInt(data,10)})
-    }
-    else{
-      this.setState({ 'last_notification_id': 0 })
-    }
-  } catch (error) {
-    console.log(error)
-    console.log("error init() last_notification_id")
-  }
-
-
-  console.log(this.state);
-  this.getNotifications();
-
-
-  }
-
+ 
+//Borrar Noticaciones
   async borrarNotificacion(notif_id)
   {
     console.log("Borrar"+notif_id)
@@ -272,9 +260,6 @@ export default class App extends React.Component {
       console.log("Borrar notif error")
     }
   }
-
- 
-
 // render
 
   getNotifications = async() =>
@@ -294,7 +279,7 @@ export default class App extends React.Component {
 
           console.log('notificaciones');
           // console.log(notificaciones);
-          new_notifications = []
+          new_notifications = [];//empty array
           respuesta.forEach(notif => 
           {
             ///actualizar last_id
@@ -308,7 +293,7 @@ export default class App extends React.Component {
 
           // console.log(new_notifications);
           //guardo en vista
-          this.setState({new:new_notifications});
+          this.setState({ new_notifications:new_notifications});
 
           ///guardo en global
           this.saveNotifications();        
@@ -335,27 +320,30 @@ export default class App extends React.Component {
           from_storage = [];
         }
 
-        if (this.state.new) {
-          let nuevas = this.state.new;
+        if (this.state.new_notifications) {
+          nuevas = this.state.new_notifications;
           nuevas.forEach(element => {
             from_storage.push(element)
           });
         }
+        // limpio las new
+        this.setState({new_notifications:[]});
 
-        AsyncStorage.setItem('notify', JSON.stringify(from_storage))
+         AsyncStorage.setItem('notify', JSON.stringify(from_storage))
         
 
         ///paso a texto de nuevo para guardar
         
         console.log(from_storage);
         console.log('Nuevas Notificaciones Guardades en el Storage')
+        this.renderNotifications();
         //
       } catch (error) {
         console.log("Error al guardar Notificaciones ne el storage");
         console.log(error);
       }
 
-      this.renderNotifications();
+      
     }
 
   
@@ -366,7 +354,7 @@ export default class App extends React.Component {
   
 
       console.log('Render Notifications')
-      let notificaciones = await AsyncStorage.getItem('notify');
+      notificaciones = await AsyncStorage.getItem('notify');
    
       console.log("!!!!!")      
       console.log(notificaciones)
@@ -381,7 +369,7 @@ export default class App extends React.Component {
 
       
 
-      listado =[];
+      let listado =[];
        for (let index = 0; index < notificaciones.length; index++) {
         
     
@@ -427,6 +415,7 @@ export default class App extends React.Component {
   
      listado.reverse();
      this.setState({listado:listado})
+     listado = undefined;
   }
 
 
@@ -484,7 +473,7 @@ export default class App extends React.Component {
                 value={this.state.clave}
               />
               <TouchableOpacity
-                onPress={() => this.registerForPushNotifications()}
+                onPress={() => this.vincular()}
                 style={styles.touchable}>
                 <Text>Registrar Aplicación</Text>
               </TouchableOpacity>
